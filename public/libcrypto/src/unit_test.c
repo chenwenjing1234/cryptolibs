@@ -5,6 +5,7 @@
 #include "crypt_rsa.h"
 #include "crypt_ecdsa.h"
 #include "crypt_ecdh.h"
+#include "crypt_speed_test.h"
 #include <openssl/obj_mac.h>
 #include <openssl/evp.h>
 
@@ -105,6 +106,10 @@ int crypt_ecc_test_case() {
 	EC_POINT *generator = NULL;
 	EC_GROUP *gp = NULL;
 	EC_POINT *ptret = NULL;
+	EC_POINT *ptret2 = NULL;
+	BN_CTX *ctx = NULL;
+
+	ctx = BN_CTX_new();
 
 	ret = qinn_sm2_gen_keypair(&sm2key);
 	if (ret != 0) {
@@ -117,6 +122,17 @@ int crypt_ecc_test_case() {
 	ptret = qinn_point_add(gp, generator, generator);
 	if (ptret == NULL) {
 		printf("qinn_point_add failed\n");
+		return 1;
+	}
+
+	ptret2 = qinn_point_double_v2(gp, generator);
+	if (ptret == NULL) {
+		printf("qinn_point_double_v2 failed\n");
+		return 1;
+	}
+
+	if (EC_POINT_cmp(gp, ptret, ptret2, ctx) != 0) {
+		printf("EC_POINT_cmp failed\n");
 		return 1;
 	}
 
@@ -225,4 +241,9 @@ int crypt_ecdh_test_case() {
 
 	printf("crypt_ecdh_test_case successed\n");
 	return 0;
+}
+
+int crypt_rsa_gen_keypair_speed_test() {
+
+	return qinn_rsa_gen_keypaire_speed();
 }

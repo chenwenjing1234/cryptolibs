@@ -18,7 +18,6 @@ unsigned long long sm2_cof = 1;
 char *sm2id = "1234567812345678";
 uint16_t sm2id_len = 16;
 
-
 static int print_hex(unsigned char *bytes, int len) {
 	for (int i = 0; i < len; i++) {
 		printf("%02X", bytes[i]);

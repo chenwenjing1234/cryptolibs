@@ -8,14 +8,16 @@ int main(int argc, char *argv[]) {
 	int ret;
 	
 	printf("main invoked\n");
+	
+	//ret = crypt_rsa_gen_keypair_speed_test();
 
-	ret = crypt_ecdh_test_case();
+	//ret = crypt_ecdh_test_case();
 
 	//ret = crypt_ecdsa_test_case();
 
 	//ret = crypt_rsa_test_case();
 
-	//ret = crypt_ecc_test_case();
+	ret = crypt_ecc_test_case();
 
 	//ret = crypt_test_case();
 
