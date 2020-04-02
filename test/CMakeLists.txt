@@ -1,9 +1,11 @@
 ﻿
-include_directories(${ROOTDIR}/crypto/include)
+include_directories(${ROOTDIR}/public/libcrypto/include)
 
+link_directories(${ROOTDIR}/win_build/public/libcrypto/src/Debug
+				 ${ROOTDIR}/third/openssl/lib/x64)
 
-set(EXENAME "cryptotest")
-set(DEPENDLIBS crypto)
+set(EXENAME "qinncrypttest")
+set(DEPENDLIBS libqinncrypt.lib)
 aux_source_directory(. SRC_LIST)
 add_executable(${EXENAME} ${SRC_LIST})
 
