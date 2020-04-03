@@ -8,6 +8,18 @@ int main(int argc, char *argv[]) {
 	int ret;
 	
 	printf("main invoked\n");
+
+	ret = crypt_ecc_point_add_test();
+
+	//ret = std_ecc_gen_keypair_test();
+
+	//ret = crypt_ecc_speed_test_case();
+
+	//ret = std_ecc_verify_test_v2();
+
+	//ret = std_ecc_verify_test();
+
+	//ret = base64_test();
 	
 	//ret = crypt_rsa_gen_keypair_speed_test();
 
@@ -17,7 +29,7 @@ int main(int argc, char *argv[]) {
 
 	//ret = crypt_rsa_test_case();
 
-	ret = crypt_ecc_test_case();
+	//ret = crypt_ecc_test_case();
 
 	//ret = crypt_test_case();
 

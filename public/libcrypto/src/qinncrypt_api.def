@@ -10,3 +10,9 @@ crypt_rsa_test_case              @5
 crypt_ecdsa_test_case            @6
 crypt_ecdh_test_case             @7
 crypt_rsa_gen_keypair_speed_test @8
+base64_test                      @9
+std_ecc_verify_test              @10
+std_ecc_verify_test_v2           @11
+crypt_ecc_speed_test_case        @12
+std_ecc_gen_keypair_test         @13
+crypt_ecc_point_add_test         @14
