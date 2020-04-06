@@ -16,3 +16,6 @@ std_ecc_verify_test_v2           @11
 crypt_ecc_speed_test_case        @12
 std_ecc_gen_keypair_test         @13
 crypt_ecc_point_add_test         @14
+crypt_ecc_point_mul_test         @15
+crypt_ecc_point_mul_speed_test   @16
+qinn_ot_test                     @17

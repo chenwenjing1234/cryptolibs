@@ -17,5 +17,6 @@ int std_ecc_sign(uint8_t *msg, int msglen, unsigned char *prikey, int prikey_len
 
 EC_POINT* qinn_point_add_v2(EC_GROUP *gp, EC_POINT *a, EC_POINT *b);
 
+EC_POINT* qinn_point_generator_mul(EC_GROUP *gp, BIGNUM *k);
 
 #endif

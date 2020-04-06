@@ -9,7 +9,13 @@ int main(int argc, char *argv[]) {
 	
 	printf("main invoked\n");
 
-	ret = crypt_ecc_point_add_test();
+	ret = qinn_ot_test();
+
+	//ret = crypt_ecc_point_mul_speed_test();
+
+	//ret = crypt_ecc_point_mul_test();
+
+	//ret = crypt_ecc_point_add_test();
 
 	//ret = std_ecc_gen_keypair_test();
 

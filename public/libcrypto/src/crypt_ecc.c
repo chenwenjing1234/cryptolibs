@@ -421,3 +421,58 @@ int std_ecc_sign(uint8_t *msg, int msglen, unsigned char *prikey, int prikey_len
 
 	return 0;
 }
+
+//return k*G
+EC_POINT* qinn_point_generator_mul(EC_GROUP *gp, BIGNUM *k) {
+	int ret;
+	int bits;
+	EC_POINT *G = NULL;
+	EC_POINT *P = NULL, *Q = NULL;
+	BN_CTX *ctx = NULL;
+
+	ctx = BN_CTX_new();
+	bits = BN_num_bits(k);
+	G = EC_GROUP_get0_generator(gp);
+	if (G == NULL) {
+		return NULL;
+	}
+
+	P = EC_POINT_new(gp);
+	Q = EC_POINT_new(gp);
+
+	ret = EC_POINT_copy(P, G);
+	if (ret != 1) {
+		return NULL;
+	}
+
+	ret = EC_POINT_set_to_infinity(gp, Q);
+	if (ret != 1) {
+		return NULL;
+	}
+
+	for (int i = 0; i < bits; i++) {
+		if (i == 0) {
+			if (BN_is_bit_set(k, i)) {
+				ret = EC_POINT_add(gp, Q, Q, P, ctx);
+				if (ret != 1) {
+					return NULL;
+				}
+			}
+			continue;
+		}
+
+		ret = EC_POINT_dbl(gp, P, P, ctx);
+		if (ret != 1) {
+			return NULL;
+		}
+
+		if (BN_is_bit_set(k, i)) {
+			ret = EC_POINT_add(gp, Q, Q, P, ctx);
+			if (ret != 1) {
+				return NULL;
+			}
+		}
+	}
+
+	return Q;
+}

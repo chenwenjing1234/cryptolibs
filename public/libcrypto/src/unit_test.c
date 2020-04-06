@@ -5,6 +5,7 @@
 #include "crypt_rsa.h"
 #include "crypt_ecdsa.h"
 #include "crypt_ecdh.h"
+#include "crypt_ot.h"
 #include "base64.h"
 
 #include "crypt_speed_test.h"
@@ -488,4 +489,241 @@ int crypt_ecc_point_add_test() {
 	}
 
 	return 0;
+}
+
+int crypt_ecc_point_mul_test() {
+	int ret;
+	sm2_key_st sm2key = { 0 };
+	EC_POINT *generator = NULL;
+	EC_GROUP *gp = NULL;
+	EC_POINT *kg = NULL;
+	EC_POINT *result1 = NULL;
+	BN_CTX *ctx = NULL;
+	BIGNUM *k = NULL, *order = NULL;
+
+	ctx = BN_CTX_new();
+	k = BN_new();
+
+	ret = qinn_sm2_gen_keypair(&sm2key);
+	if (ret != 0) {
+		printf("qinn_sm2_gen_keypair failed\n");
+		return ret;
+	}
+
+	gp = sm2key.sm2group;
+	generator = EC_GROUP_get0_generator(gp);
+
+	order = EC_GROUP_get0_order(gp);
+	if (order == NULL) {
+		return 1;
+	}
+
+	ret = BN_rand_range(k, order);
+	if (ret != 1) {
+		return 1;
+	}
+
+	kg = EC_POINT_new(gp);
+	if (kg == NULL) {
+		return 1;
+	}
+
+	ret = EC_POINT_mul(gp, kg, k, NULL, NULL, ctx);
+	if (ret != 1) {
+		return 1;
+	}
+
+	result1 = qinn_point_generator_mul(gp, k);
+	if (result1 == NULL) {
+		printf("qinn_point_generator_mul failed\n");
+		return 1;
+	}
+
+	if (EC_POINT_cmp(gp, kg, result1, ctx) != 0) {
+		printf("EC_POINT_cmp failed\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+int crypt_ecc_point_mul_speed_test() {
+	int ret;
+	sm2_key_st sm2key = { 0 };
+	EC_POINT *generator = NULL;
+	EC_GROUP *gp = NULL;
+	EC_POINT *kg = NULL;
+	EC_POINT *result1 = NULL;
+	BN_CTX *ctx = NULL;
+	BIGNUM *k = NULL, *order = NULL;
+	int loops = 10000;
+	time_t t1, t2;
+	long costtime;
+
+	ctx = BN_CTX_new();
+	k = BN_new();
+
+	ret = qinn_sm2_gen_keypair(&sm2key);
+	if (ret != 0) {
+		printf("qinn_sm2_gen_keypair failed\n");
+		return ret;
+	}
+
+	gp = sm2key.sm2group;
+	generator = EC_GROUP_get0_generator(gp);
+
+	order = EC_GROUP_get0_order(gp);
+	if (order == NULL) {
+		return 1;
+	}
+
+	ret = BN_rand_range(k, order);
+	if (ret != 1) {
+		return 1;
+	}
+
+	kg = EC_POINT_new(gp);
+	if (kg == NULL) {
+		return 1;
+	}
+
+	t1 = time(NULL);
+	for (int i = 0; i < loops; i++) {
+		ret = EC_POINT_mul(gp, kg, k, NULL, NULL, ctx);
+		if (ret != 1) {
+			return 1;
+		}
+	}
+	t2 = time(NULL);
+	costtime = t2 - t1;
+
+	printf("EC_POINT_mul invoked %d times, cost %ld seconds, average \
+		%.2f times/seconds\n", loops, costtime, (float)loops/costtime);
+	
+	t1 = t2 = 0;
+	t1 = time(NULL);
+	for (int i = 0; i < loops; i++) {
+		result1 = qinn_point_generator_mul(gp, k);
+		if (result1 == NULL) {
+			printf("qinn_point_generator_mul failed\n");
+			return 1;
+		}
+	}
+	t2 = time(NULL);
+	costtime = t2 - t1;
+
+	printf("qinn_point_generator_mul invoked %d times, cost %ld seconds, average \
+		%.2f times/seconds\n", loops, costtime, (float)loops/costtime);
+
+	if (EC_POINT_cmp(gp, kg, result1, ctx) != 0) {
+		printf("EC_POINT_cmp failed\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+int qinn_ot_test() {
+	int ret;
+	unsigned char *prikey1 = NULL;
+	unsigned char *prikey2 = NULL;
+	unsigned char *pubkey1 = NULL;
+	unsigned char *pubkey2 = NULL;
+	unsigned char msg1[16] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+	unsigned char msg2[16] = { 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18,
+		0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+	unsigned char aeskey[32] = { 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+		0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+		0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+		0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37};
+	unsigned char cipherkey[256] = { 0 };
+	unsigned char plainkey1[32] = { 0 };
+	unsigned char plainkey2[32] = { 0 };
+	unsigned char ciphermsg1[32] = { 0 };
+	unsigned char ciphermsg2[32] = { 0 };
+	unsigned char plainmsg1[16] = { 0 };
+	unsigned char plainmsg2[16] = { 0 };
+	unsigned char paddingbuf[128] = { 0 };
+	unsigned char plainkey1padbuf[128] = { 0 };
+	unsigned char plainkey2padbuf[128] = { 0 };
+	int cipherkeylen;
+	int plainkey1len = sizeof(plainkey1);
+	int plainkey2len = sizeof(plainkey2);
+	int prikey1len, prikey2len;
+	int pubkey1len, pubkey2len;
+	int ciphermsg1len, ciphermsg2len;
+	int plainmsg1len, plainmsg2len;
+	int plainkey1padbuflen, plainkey2padbuflen;
+	int paddinglen;
+
+	//模拟用户a产生两个秘钥对
+	ret = qinn_sender_gen_keypair(&prikey1, &prikey1len, 
+		&pubkey1, &pubkey1len,
+		&prikey2, &prikey2len, 
+		&pubkey2, &pubkey2len);
+	if (ret != 0) {
+		printf("qinn_sender_gen_keypair failed\n");
+		return 1;
+	}
+
+	//add padding
+	memcpy(paddingbuf, aeskey, sizeof(aeskey));
+	paddinglen = sizeof(paddingbuf) - sizeof(aeskey);
+	for (int i = sizeof(aeskey); i < sizeof(paddingbuf); i++) {
+		paddingbuf[i] = paddinglen;
+	}
+	//模拟用户b随机挑选用户a的一个公钥加密AES密钥
+	ret = qinn_receiver_enc_key(pubkey1, pubkey1len,
+		paddingbuf, sizeof(paddingbuf), cipherkey, &cipherkeylen);
+	if (ret != 0) {
+		printf("qinn_receiver_enc_key failed\n");
+		return 1;
+	}
+
+	//模拟用户a使用自己的两个私钥分别解密AES密钥密文
+	ret = qinn_sender_dec_key(prikey1, prikey1len,
+		prikey2, prikey2len, cipherkey, cipherkeylen,
+		plainkey1padbuf, &plainkey1padbuflen,
+		plainkey2padbuf, &plainkey2padbuflen);
+	if (ret != 0) {
+		printf("qinn_sender_dec_key failed\n");
+		return 1;
+	}
+
+	//remove padding
+	memcpy(plainkey1, plainkey1padbuf, sizeof(plainkey1));
+	memcpy(plainkey2, plainkey2padbuf, sizeof(plainkey2));
+	
+	//模拟用户a分别使用解密出来的两个AES密钥加密自己的两条消息
+	ret = qinn_sender_enc_msg(plainkey1, plainkey1len,
+		plainkey2, plainkey2len, msg1, sizeof(msg1),
+		msg2, sizeof(msg2), ciphermsg1, &ciphermsg1len,
+		ciphermsg2, &ciphermsg2len);
+	if (ret != 0) {
+		printf("qinn_sender_enc_msg failed\n");
+		return 1;
+	}
+
+	//模拟用户b使用AES密钥分别解密用户a发送的两条密文消息
+	ret = qinn_receiver_dec_msg(aeskey, sizeof(aeskey),
+		ciphermsg1, ciphermsg1len, ciphermsg2, ciphermsg2len,
+		plainmsg1, &plainmsg1len, plainmsg2, &plainmsg2len);
+	if (ret != 0) {
+		printf("qinn_receiver_dec_msg failed\n");
+		return 1;
+	}
+
+	//验证用户b是否正确获得用户a的其中一条消息
+	if (memcmp(msg1, plainmsg1) == 0 || memcmp(msg2, plainmsg1) == 0) {
+		printf("plainmsg1 equal with one of user a msg\n");
+		return 0;
+	}
+	if (memcmp(msg1, plainmsg2) == 0 || memcmp(msg2, plainmsg2) == 0) {
+		printf("plainmsg2 equal with one of user a msg\n");
+		return 0;
+	}
+
+	printf("oblivious transfer failed\n");
+	return 1;
 }
