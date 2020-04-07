@@ -19,3 +19,4 @@ crypt_ecc_point_add_test         @14
 crypt_ecc_point_mul_test         @15
 crypt_ecc_point_mul_speed_test   @16
 qinn_ot_test                     @17
+rsa_mul_homo_enc_test            @18

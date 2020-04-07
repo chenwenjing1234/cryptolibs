@@ -11,6 +11,7 @@
 #include "crypt_speed_test.h"
 #include <openssl/obj_mac.h>
 #include <openssl/evp.h>
+#include <openssl/rand.h>
 
 static int print_bytes(unsigned char *bytes, int len) {
 	for (int i = 0; i < len; i++) {
@@ -726,4 +727,127 @@ int qinn_ot_test() {
 
 	printf("oblivious transfer failed\n");
 	return 1;
+}
+
+int rsa_mul_homo_enc_test() {
+	int ret;
+	//RSA *rsa = NULL;
+	BIGNUM *p1 = NULL, *p2 = NULL, *p3 = NULL, *p4 = NULL;
+	BIGNUM *e = NULL, *n = NULL;
+	BIGNUM *c1 = NULL, *c2 = NULL, *c3 = NULL, *c4 = NULL;
+	uint8_t plain1[128] = { 0 };
+	uint8_t plain2[128] = { 0 };
+	uint8_t plain3[256] = { 0 };
+	uint8_t plain4[128] = { 0 };
+	uint8_t cipher1[128] = { 0 };
+	uint8_t cipher2[128] = { 0 };
+	uint8_t cipher3[128] = { 0 };
+	uint8_t cipher4[128] = { 0 };
+	int cipher1len, cipher2len, cipher3len, cipher4len;
+	int plain3len, plain4len;
+	BN_CTX *ctx = NULL;
+	qinn_rsa_st rsa_key = { 0 };
+
+	//rsa = RSA_new();
+	ctx = BN_CTX_new();
+
+	BN_CTX_start(ctx);
+	p1 = BN_CTX_get(ctx);
+	p2 = BN_CTX_get(ctx);
+	p3 = BN_CTX_get(ctx);
+	p4 = BN_CTX_get(ctx);
+	e = BN_CTX_get(ctx);
+	c1 = BN_CTX_get(ctx);
+	c2 = BN_CTX_get(ctx);
+	c3 = BN_CTX_get(ctx);
+	c4 = BN_CTX_get(ctx);
+
+	BN_set_word(e, 65537);
+	/*ret = RSA_generate_key_ex(rsa, 1024, e, NULL);
+	if (ret != 1) {
+		printf("RSA_generate_key_ex failed\n");
+		return 1;
+	}*/
+
+	/*n = RSA_get0_n(rsa);
+	if (n == NULL) {
+		return 1;
+	}*/
+
+	qinn_rsa_gen_key(1024, );
+
+	RAND_bytes(plain1, sizeof(plain1));
+	RAND_bytes(plain2, sizeof(plain2));
+
+	//模拟对明文p1进行加密 c1 = rsa_enc(plain1)
+	cipher1len = RSA_public_encrypt(sizeof(plain1), plain1, cipher1, rsa, RSA_NO_PADDING);
+	if (cipher1len <= -1) {
+		return 1;
+	}
+
+	//模拟对明文p2进行加密 c2 = rsa_enc(plain2)
+	cipher2len = RSA_public_encrypt(sizeof(plain2), plain2, cipher2, rsa, RSA_NO_PADDING);
+	if (cipher2len <= -1) {
+		return 1;
+	}
+
+	//对加密结果进行乘法运算  c3 = c1*c2
+	if (BN_bin2bn(cipher1, cipher1len, c1) == NULL) {
+		return 1;
+	}
+	if (BN_bin2bn(cipher2, cipher2len, c2) == NULL) {
+		return 1;
+	}
+	ret = BN_mod_mul(c3, c1, c2, n, ctx);
+	if (ret != 1) {
+		return 1;
+	}
+	cipher3len = BN_bn2bin(c3, cipher3);
+	if (cipher3len <= 1) {
+		return 1;
+	}
+
+	//计算p3 = p1*p2
+	if (BN_bin2bn(plain1, sizeof(plain1), p1) == NULL) {
+		return 1;
+	}
+	if (BN_bin2bn(plain2, sizeof(plain2), p2) == NULL) {
+		return 1;
+	}
+	ret = BN_mul(p3, p1, p2, ctx);
+	if (ret != 1) {
+		return 1;
+	}
+
+	//对p3进行加密 c4 = rsa_enc(p3)
+	plain3len = BN_bn2bin(p3, plain3);
+	if (plain3len <= 0) {
+		return 1;
+	}
+	cipher4len = RSA_public_encrypt(plain3len, plain3, cipher4, rsa, RSA_NO_PADDING);
+	if (cipher4len <= 0) {
+		return 1;
+	}
+
+	//比较c3 c4是否相等
+	if (cipher3len != cipher4len || memcmp(cipher3, cipher4, cipher3len) != 0) {
+		printf("cipher text not equal\n");
+		return 1;
+	}
+
+
+	//对c3进行解密 p4 = rsa_dec(c3)
+	plain4len = RSA_private_decrypt(cipher3len, cipher3, plain4, rsa, RSA_NO_PADDING);
+	if (plain4len <= 0) {
+		return 1;
+	}
+
+	//比较p3 p4是否相等
+	if (plain3len != plain4len || memcmp(plain3, plain4, plain3len) != 0) {
+		printf("plain text not equal\n");
+		return 1;
+	}
+
+	printf("rsa mutiply homo test successed\n");
+	return 0;
 }
