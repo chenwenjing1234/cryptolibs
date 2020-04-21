@@ -210,7 +210,7 @@ int crypt_ecdsa_test_case() {
 		return 1;
 	}
 
-	/*ret = qinn_ecdsa_sign(eckey, EVP_sha1(), plain, sizeof(plain),
+	ret = qinn_ecdsa_sign(eckey, EVP_sha1(), plain, sizeof(plain),
 		sigr, &sigr_len, sigs, &sigs_len);
 	if (ret != 0) {
 		printf("qinn_ecdsa_sign failed\n");
@@ -222,7 +222,7 @@ int crypt_ecdsa_test_case() {
 	if (ret != 0) {
 		printf("qinn_ecdsa_verify failed\n");
 		return 1;
-	}*/
+	}
 
 	printf("qinn_ecdsa_sign qinn_ecdsa_verify successed\n");
 	return 0;
