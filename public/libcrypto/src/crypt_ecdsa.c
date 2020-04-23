@@ -30,6 +30,7 @@ int qinn_ecdsa_sign(EC_KEY *eckey, EVP_MD *md, unsigned char *msg, int inlen,
 	EVP_DigestUpdate(mdctx, msg, inlen);
 	EVP_DigestFinal_ex(mdctx, hash, &hash_len);
 
+	k = BN_CTX_get(ctx);
 	n = BN_CTX_get(ctx);
 	x1 = BN_CTX_get(ctx);
 	invk = BN_CTX_get(ctx);
@@ -49,6 +50,10 @@ int qinn_ecdsa_sign(EC_KEY *eckey, EVP_MD *md, unsigned char *msg, int inlen,
 
 	BN_rand_range(k, n);
 
+	if (BN_mod_inverse(invk, k, n, ctx) == NULL) {
+		return 1;
+	}
+
 	kg = EC_POINT_new(group);
 	if (kg == NULL) {
 		return 1;
@@ -61,11 +66,6 @@ int qinn_ecdsa_sign(EC_KEY *eckey, EVP_MD *md, unsigned char *msg, int inlen,
 
 	ret = EC_POINT_get_affine_coordinates_GFp(group, kg, 
 		  x1, NULL, ctx);
-	if (ret != 1) {
-		return 1;
-	}
-
-	ret = BN_mod_inverse(invk, k, n, ctx);
 	if (ret != 1) {
 		return 1;
 	}
@@ -137,8 +137,7 @@ int qinn_ecdsa_verify(EC_KEY *eckey, EVP_MD *md, unsigned char *msg, int inlen,
 	EVP_DigestInit_ex(mdctx, md, NULL);
 	EVP_DigestUpdate(mdctx, msg, inlen);
 	EVP_DigestFinal_ex(mdctx, hash, &hash_len);
-	BN_bin2bn(hash, hash_len, hm);
-
+	
 	n = BN_CTX_get(ctx);
 	r = BN_CTX_get(ctx);
 	invs = BN_CTX_get(ctx);
@@ -146,6 +145,12 @@ int qinn_ecdsa_verify(EC_KEY *eckey, EVP_MD *md, unsigned char *msg, int inlen,
 	u2 = BN_CTX_get(ctx);
 	s = BN_CTX_get(ctx);
 	x = BN_CTX_get(ctx);
+	hm = BN_CTX_get(ctx);
+	if (hm == NULL) {
+		return 1;
+	}
+
+	BN_bin2bn(hash, hash_len, hm);
 
 	group = EC_KEY_get0_group(eckey);
 	if (group == NULL) {
@@ -160,8 +165,7 @@ int qinn_ecdsa_verify(EC_KEY *eckey, EVP_MD *md, unsigned char *msg, int inlen,
 	BN_bin2bn(sigs, slen, s);
 	BN_bin2bn(sigr, rlen, r);
 
-	ret = BN_mod_inverse(invs, s, n, ctx);
-	if (ret != 1) {
+	if (BN_mod_inverse(invs, s, n, ctx) == NULL) {
 		return 1;
 	}
 
