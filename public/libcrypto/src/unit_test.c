@@ -6,6 +6,7 @@
 #include "crypt_ecdsa.h"
 #include "crypt_ecdh.h"
 #include "crypt_ot.h"
+#include "crypt_srp.h"
 #include "base64.h"
 
 #include "crypt_speed_test.h"
@@ -841,4 +842,152 @@ int rsa_mul_homo_enc_test() {
 
 	printf("rsa mutiply homo test successed\n");
 	return 0;
+}
+
+int qinn_srp_agreement_test() {
+	int rc = 1;
+	BIGNUM *g, *N, *salt, *x, *a, *A;
+	BIGNUM *b, *B, *k, *v, *u, *serS;
+	BIGNUM *serM1, *serM2, *serK, *cliS;
+	BIGNUM *cliM1, *cliM2, *cliK;
+	BN_CTX *ctx = NULL;
+	unsigned char saltbuf[128] = { 0 };
+	int saltlen;
+	char *username = "Alice&Bob";
+	char *passwprd = "qwert12345";
+
+	ctx = BN_CTX_new();
+	g = BN_CTX_get(ctx);
+	N = BN_CTX_get(ctx);
+	salt = BN_CTX_get(ctx);
+	x = BN_CTX_get(ctx);
+	a = BN_CTX_get(ctx);
+	A = BN_CTX_get(ctx);
+	b = BN_CTX_get(ctx);
+	B = BN_CTX_get(ctx);
+	k = BN_CTX_get(ctx);
+	v = BN_CTX_get(ctx);
+	u = BN_CTX_get(ctx);
+	serS = BN_CTX_get(ctx);
+	serM1 = BN_CTX_get(ctx);
+	serM2 = BN_CTX_get(ctx);
+	serK = BN_CTX_get(ctx);
+	cliS = BN_CTX_get(ctx);
+	cliM1 = BN_CTX_get(ctx);
+	cliM2 = BN_CTX_get(ctx);
+	cliK = BN_CTX_get(ctx);
+
+	rc = BN_generate_prime_ex(N, 1024, 0, NULL, NULL, NULL);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	BN_set_word(g, 2L);
+
+	BN_rand(salt, 1024, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY);
+
+	saltlen = BN_bn2bin(salt, saltbuf);
+
+	rc = qinn_srp_calx(saltbuf, saltlen, username, passwprd, x);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	rc = qinn_srp_calk(N, g, k);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	BN_rand(a, 1024, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY);
+
+	rc = qinn_srp_calA(g, a, N, A);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	BN_rand(b, 1024, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY);
+
+	rc = qinn_srp_calV(g, x, N, v);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	rc = qinn_srp_calB(k, v, g, b, N, B);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	rc = qinn_srp_calu(A, B, u);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	//服务端计算S
+	rc = qinn_srp_cal_serverS(A, v, u, b, N, serS);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	//服务端计算M1
+	rc = qinn_srp_calM1(A, B, serS, serM1);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	//服务端计算M2
+	rc = qinn_srp_calM2(A, serM1, serS, serM2);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	//服务端计算会话密钥
+	rc = qinn_srp_calK(serS, serK);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	//客户端计算S
+	rc = qinn_srp_cal_clientS(B, k, g, x, a, u, N, cliS);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	//客户端计算M1
+	rc = qinn_srp_calM1(A, B, cliS, cliM1);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	//客户端计算M2
+	rc = qinn_srp_calM2(A, cliM1, cliS, cliM2);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	//客户端计算会话密钥
+	rc = qinn_srp_calK(cliS, cliK);
+	if (rc != 1) {
+		goto exit;
+	}
+
+	if (BN_cmp(cliS, serS) != 0) {
+		goto exit;
+	}
+
+	if (BN_cmp(cliM1, serM1) != 0) {
+		goto exit;
+	}
+
+	if (BN_cmp(cliM2, serM2) != 0) {
+		goto exit;
+	}
+
+	if (BN_cmp(cliK, serK) != 0) {
+		goto exit;
+	}
+
+	rc = 1;
+exit:
+	BN_CTX_free(ctx);
+	return rc;
 }

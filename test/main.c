@@ -9,6 +9,8 @@ int main(int argc, char *argv[]) {
 	
 	printf("main invoked\n");
 
+	ret = qinn_srp_agreement_test();
+
 	//ret = rsa_mul_homo_enc_test();
 
 	//ret = qinn_ot_test();
@@ -33,7 +35,7 @@ int main(int argc, char *argv[]) {
 
 	//ret = crypt_ecdh_test_case();
 
-	ret = crypt_ecdsa_test_case();
+	//ret = crypt_ecdsa_test_case();
 
 	//ret = crypt_rsa_test_case();
 
