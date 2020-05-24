@@ -8,6 +8,7 @@
 #include "crypt_ot.h"
 #include "crypt_srp.h"
 #include "base64.h"
+#include "crypt_sm4.h"
 
 #include "crypt_speed_test.h"
 #include <openssl/obj_mac.h>
@@ -991,3 +992,66 @@ exit:
 	BN_CTX_free(ctx);
 	return rc;
 }
+
+int qinn_sm4_test() {
+	int ret = 1;
+	time_t t1, t2;
+	long cost_time;
+	float total, speed;
+	int loops = 10000000;
+	sm4_key_st sm4_key = { 0 };
+	unsigned char raw_key[] = {
+		0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
+		0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
+	unsigned char input[] = {
+		0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
+		0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
+	unsigned char output[16] = { 0 };
+	unsigned char decresult[16] = { 0 };
+	//unsigned char perft_in[1024] = { 0 };
+	//unsigned char perft_out[1024] = { 0 };
+	
+	qinn_sm4_init_key(raw_key, sizeof(raw_key), &sm4_key);
+
+	ret = qinn_sm4_block_encrypt(&sm4_key, input, sizeof(input), output);
+	if (ret != 0) {
+		printf("qinn_sm4_block_encrypt failed\n");
+		return 1;
+	}
+
+	printf("bolck encrypt result:\n");
+	for (int i = 0; i < 16; i++) {
+		printf("%02X", output[i]);
+	}
+	printf("\n");
+
+	ret = qinn_sm4_block_decrypt(&sm4_key, output, sizeof(output), decresult);
+	if (ret != 0) {
+		printf("qinn_sm4_block_decrypt failed\n");
+		return 1;
+	}
+
+	printf("bolck decrypt result:\n");
+	for (int i = 0; i < 16; i++) {
+		printf("%02X", decresult[i]);
+	}
+	printf("\n");
+
+	printf("sm4 encrypt perf test:\n");
+	t1 = time(NULL);
+	for (int i = 0; i < loops; i++) {
+		ret = qinn_sm4_block_encrypt(&sm4_key, input, sizeof(input), output);
+		if (ret != 0) {
+			printf("qinn_sm4_block_encrypt failed\n");
+			return 1;
+		}
+	}
+	t2 = time(NULL);
+	cost_time = t2 - t1;
+	total = 16 * loops / 1024 / 1024;
+	speed = total / cost_time;
+	printf("sm4 encrypt perf test result, enc %.2f M, cost %d seconds, \
+		average %.2f M/S\n", total, cost_time, speed);
+
+	return 0;
+} 

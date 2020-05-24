@@ -9,7 +9,7 @@ int main(int argc, char *argv[]) {
 	
 	printf("main invoked\n");
 
-	ret = qinn_srp_agreement_test();
+	//ret = qinn_srp_agreement_test();
 
 	//ret = rsa_mul_homo_enc_test();
 
@@ -45,6 +45,7 @@ int main(int argc, char *argv[]) {
 
 	//ret = aes_test();
 		
+	ret = qinn_sm4_test();
 
 	return 0;
 }

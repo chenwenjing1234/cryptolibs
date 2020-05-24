@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-
 static uint8_t SBOX[256] = {
 	0xd6, 0x90, 0xe9, 0xfe, 0xcc, 0xe1, 0x3d, 0xb7,
 	0x16, 0xb6, 0x14, 0xc2, 0x28, 0xfb, 0x2c, 0x05,
@@ -52,44 +50,146 @@ static uint32_t CK[32] = {
 	0xc0c7ced5, 0xdce3eaf1, 0xf8ff060d, 0x141b2229,
 	0x30373e45, 0x4c535a61, 0x686f767d, 0x848b9299,
 	0xa0a7aeb5, 0xbcc3cad1, 0xd8dfe6ed, 0xf4fb0209,
-	0x10171e25, 0x2c333a41, 0x484f565d, 0x646b7279,
+	0x10171e25, 0x2c333a41, 0x484f565d, 0x646b7279
 };
 
-#define GET4BYTES(x)  (*(uint32_t*)x)
-#define ROATE_LEFT(x, n) ((x) << n) | ((x) >> (32 - n))
+#define ROATE_LEFT(x, n) (((x) << n) | ((x) >> (32 - n)))
 #define L(x) (x ^ ROATE_LEFT(x, 2) ^ ROATE_LEFT(x, 10) ^ ROATE_LEFT(x, 18) ^ ROATE_LEFT(x, 24))
 #define L1(x) (x ^ ROATE_LEFT(x, 13) ^ ROATE_LEFT(x, 23))
+
+static uint32_t bytes_2_uint32(unsigned char *in) {
+	uint32_t t;
+
+	uint32_t t0 = in[0] << 24;
+	uint32_t t1 = in[1] << 16;
+	uint32_t t2 = in[2] << 8;
+	uint32_t t3 = in[3];
+
+	t = t0 | t1 | t2 | t3;
+	return t;
+}
+
+static void uint32_2_bytes(uint32_t in, unsigned char *out) {
+	out[0] = in >> 24 & 0xFF;
+	out[1] = in >> 16 & 0xFF;
+	out[2] = in >> 8 & 0xFF;
+	out[3] = in & 0xFF;
+}
 
 static uint32_t t_exchange(uint32_t u) {
 	uint32_t t = 0;
 	unsigned char in[4] = { 0 };
 	unsigned char out[4] = { 0 };
 
-	in[0] = u & 0XFF; 
-	in[1] = u << 8 & 0XFF;
-	in[2] = u << 16 & 0XFF;
-	in[3] = u << 24 & 0XFF;
+	in[0] = u & 0XFF;
+	in[1] = u >> 8 & 0XFF;
+	in[2] = u >> 16 & 0XFF;
+	in[3] = u >> 24 & 0XFF;
 
 	out[0] = SBOX[in[0]];
 	out[1] = SBOX[in[1]];
 	out[2] = SBOX[in[2]];
 	out[3] = SBOX[in[3]];
 
-	t = GET4BYTES(out);
+	uint32_t t0 = out[0];
+	uint32_t t1 = out[1] << 8;
+	uint32_t t2 = out[2] << 16;
+	uint32_t t3 = out[3] << 24;
+
+	t = t0 | t1 | t2 | t3;
+	
 	return t;
 }
 
-int qinn_sm4_init_key(unsigned char *key, int key_len, sm4_key_st *sm4_key) {
-	uint32_t K0, K1, K2, K3;
+static uint32_t compose_exchange_round(uint32_t u) {
+	uint32_t t1 = 0;
+	uint32_t t2 = 0;
 
-	K0 = GET4BYTES(key)    ^ FK[0];
-	K1 = GET4BYTES(key+4)  ^ FK[0];
-	K2 = GET4BYTES(key+8)  ^ FK[0];
-	K3 = GET4BYTES(key+12) ^ FK[0];
-
+	t1 = t_exchange(u);
+	t2 = L(t1);
+	return t2;
 }
 
-int qinn_sm4_block_encrypt(unsigned char *key, unsigned char *in,
+static uint32_t compose_exchange_expand(uint32_t u) {
+	uint32_t t1 = 0;
+	uint32_t t2 = 0;
+
+	t1 = t_exchange(u);
+	t2 = L1(t1);
+	return t2;
+}
+
+static uint32_t round(uint32_t u1, uint32_t u2, uint32_t u3,
+	uint32_t u4, uint32_t rd_key) {
+	uint32_t t;
+
+	t = compose_exchange_round(u2^u3^u4^rd_key);
+	return u1 ^ t;
+}
+
+void qinn_sm4_init_key(unsigned char *key, int key_len, sm4_key_st *sm4_key) {
+	uint32_t K[36] = { 0 };
+	uint32_t t = 0;
+
+	K[0] = bytes_2_uint32(key) ^ FK[0];
+	K[1] = bytes_2_uint32(key + 4) ^ FK[1];
+	K[2] = bytes_2_uint32(key + 8) ^ FK[2];
+	K[3] = bytes_2_uint32(key + 12) ^ FK[3];
+
+	for (int i = 0; i < 32; i++) {
+		t = compose_exchange_expand(K[i+1] ^ K[i+2] ^ K[i+3] ^ CK[i]);
+		K[i + 4] = K[i] ^ t;
+		sm4_key->round_key[i] = K[i + 4];
+	}
+}
+
+int qinn_sm4_block_encrypt(sm4_key_st *sm4_key, unsigned char *in,
 	int inlen, unsigned char *out) {
 
+	uint32_t X[36];
+
+	if (inlen != 16) {
+		return 1;
+	}
+
+	X[0] = bytes_2_uint32(in);
+	X[1] = bytes_2_uint32(in + 4);
+	X[2] = bytes_2_uint32(in + 8);
+	X[3] = bytes_2_uint32(in + 12);
+
+	for (int i = 0; i < 32; i++) {
+		X[i + 4] = round(X[i], X[i+1], X[i+2], X[i+3], sm4_key->round_key[i]);
+	}
+
+	uint32_2_bytes(X[35], out);
+	uint32_2_bytes(X[34], out+4);
+	uint32_2_bytes(X[33], out+8);
+	uint32_2_bytes(X[32], out+12);
+
+	return 0;
+}
+
+int qinn_sm4_block_decrypt(sm4_key_st *sm4_key, unsigned char *in,
+	int inlen, unsigned char *out) {
+	uint32_t X[36];
+
+	if (inlen != 16) {
+		return 1;
+	}
+
+	X[0] = bytes_2_uint32(in);
+	X[1] = bytes_2_uint32(in + 4);
+	X[2] = bytes_2_uint32(in + 8);
+	X[3] = bytes_2_uint32(in + 12);
+
+	for (int i = 0, j = 31; i < 32, j>=0; i++, j--) {
+		X[i + 4] = round(X[i], X[i + 1], X[i + 2], X[i + 3], sm4_key->round_key[j]);
+	}
+
+	uint32_2_bytes(X[35], out);
+	uint32_2_bytes(X[34], out + 4);
+	uint32_2_bytes(X[33], out + 8);
+	uint32_2_bytes(X[32], out + 12);
+
+	return 0;
 }
