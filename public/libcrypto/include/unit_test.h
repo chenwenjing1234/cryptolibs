@@ -12,3 +12,5 @@ int crypt_ecdsa_test_case();
 int qinn_srp_agreement_test();
 
 int qinn_sm4_test();
+
+int crypt_gf_multiply_test();

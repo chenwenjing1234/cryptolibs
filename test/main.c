@@ -45,7 +45,9 @@ int main(int argc, char *argv[]) {
 
 	//ret = aes_test();
 		
-	ret = qinn_sm4_test();
+	//ret = qinn_sm4_test();
+
+	ret = crypt_gf_multiply_test();
 
 	return 0;
 }

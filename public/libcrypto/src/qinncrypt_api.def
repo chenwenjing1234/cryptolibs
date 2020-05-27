@@ -22,3 +22,4 @@ qinn_ot_test                     @17
 rsa_mul_homo_enc_test            @18
 qinn_srp_agreement_test          @19
 qinn_sm4_test					 @20
+crypt_gf_multiply_test           @21

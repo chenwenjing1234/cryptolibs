@@ -9,6 +9,7 @@
 #include "crypt_srp.h"
 #include "base64.h"
 #include "crypt_sm4.h"
+#include "crypt_gf_multiply.h"
 
 #include "crypt_speed_test.h"
 #include <openssl/obj_mac.h>
@@ -1055,3 +1056,12 @@ int qinn_sm4_test() {
 
 	return 0;
 } 
+
+int crypt_gf_multiply_test() {
+	uint8_t a = 0x3a, b = 0x24;
+	uint8_t result;
+
+	result = gf_multiply(a, b);
+	printf("result = 0x%02x\n", result);
+	return 0;
+}
