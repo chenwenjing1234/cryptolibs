@@ -1065,3 +1065,18 @@ int crypt_gf_multiply_test() {
 	printf("result = 0x%02x\n", result);
 	return 0;
 }
+
+int crypt_gf_build_table_test() {
+	uint8_t table[256][256];
+
+	gf_build_table(table);
+
+	for (int i = 0; i < 256; i++) {
+		for (int j = 0; j < 256; j++) {
+			//printf("table[%d][%d] = 0x%02x\n", i, j, table[i][j]);
+		}
+	}
+	printf("table[0x3a][0x24] = 0x%02x\n", table[0x3a][0x24]);
+	printf("table[0x02][0x87] = 0x%02x\n", table[0x02][0x87]);
+	return 0;
+}

@@ -47,7 +47,9 @@ int main(int argc, char *argv[]) {
 		
 	//ret = qinn_sm4_test();
 
-	ret = crypt_gf_multiply_test();
+	//ret = crypt_gf_multiply_test();
+
+	ret = crypt_gf_build_table_test();
 
 	return 0;
 }

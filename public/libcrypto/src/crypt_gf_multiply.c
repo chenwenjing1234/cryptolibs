@@ -26,3 +26,12 @@ uint8_t gf_multiply(uint8_t a, uint8_t b) {
 
 	return result;
 }
+
+void gf_build_table(uint8_t table[256][256]) {
+
+	for (int i = 0; i < 256; i++) {
+		for (int j = 0; j < 256; j++) {
+			table[i][j] = gf_multiply(i, j);
+		}
+	}
+}

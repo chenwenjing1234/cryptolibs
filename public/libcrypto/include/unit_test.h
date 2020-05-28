@@ -14,3 +14,5 @@ int qinn_srp_agreement_test();
 int qinn_sm4_test();
 
 int crypt_gf_multiply_test();
+
+int crypt_gf_build_table_test();
